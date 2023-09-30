@@ -1,3 +1,5 @@
+// ignore_for_file: use_build_context_synchronously
+
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/plugin_api.dart';
@@ -150,29 +152,64 @@ class _HomeScreenState extends State<HomeScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
                   // Button 1
-                  ElevatedButton(
-                    onPressed: () async {
-                      double val = await getReturnValue();
-                      int isGeo = val.toInt();
-                      if (isGeo > 100) {
-                        setState(() {
-                          isButtonEnabled = true;
-                        });
-                      }
-                    },
-                    child: Text('Locate me'),
-                  ),
-                  // Button 2
-                  ElevatedButton(
-                    onPressed: isButtonEnabled
-                        ? () {
-                            Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                    builder: (context) => Attendace()));
-                          }
-                        : null,
-                    child: Text('Face log'),
+                  SizedBox(
+                    height: MediaQuery.of(context).size.height/8,
+                    width: MediaQuery.of(context).size.width/3,
+                    child: ElevatedButton(
+                      onPressed: () async {
+                        double val = await getReturnValue();
+                        int isGeo = val.toInt();
+                        if (isGeo > 100) {
+                          showDialog(
+                                context: context,
+                                builder: (context) {
+                                  return Center(
+                                    child: AlertDialog(
+                                      title: Text('Wow! You are in campus!'),
+                                      content: Text('Please click the "Face log" button to register your attendance.'),
+                                      actions: [
+                                        TextButton(
+                                          onPressed: () {
+                                            Navigator.of(context).pop();
+                                            Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                        builder: (context) => Attendace()));
+                                          },
+                                          child: Text('Face log'),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                },
+                              );
+                            }
+                            else{
+                              showDialog(
+                                  context: context,
+                                  builder: (context) {
+                                    return AlertDialog(
+                                      title: Text('Sorry You are not in campus!'),
+                                      content: Text('Please retry after you reach the campus.'),
+                                      actions: [
+                                        TextButton(
+                                          onPressed: () {
+                                            Navigator.of(context).pop();
+                                          },
+                                          child: Text('OK'),
+                                        ),
+                                      ],
+                                    );
+                                  },
+                                );
+                            }
+                      },
+                      child: Text(
+                        'Locate me',
+                        style: TextStyle(fontSize: MediaQuery.of(context).textScaleFactor * 30.5),
+                        ),
+
+                    ),
                   ),
                 ],
               ),
