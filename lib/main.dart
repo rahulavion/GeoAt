@@ -6,10 +6,15 @@ import 'package:flutter_map/plugin_api.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import 'capture.dart';
+import 'package:camera/camera.dart';
 
-void main() {
+
+Future<void> main() async {
   runApp(const MyApp());
+  WidgetsFlutterBinding.ensureInitialized();
 }
+
+
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
@@ -33,8 +38,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   bool hasLocationPermission = false;
-  
-
+  1q
   @override
   void initState() {
     super.initState();
@@ -55,10 +59,12 @@ class _HomeScreenState extends State<HomeScreen> {
     return 12742 * asin(sqrt(a)) * 1000;
   }
 
+late List<CameraDescription> cameras;
   List pos = [];
   Future<List> getLatLng() async {
     Position currentPosition = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high);
+    desiredAccuracy: LocationAccuracy.high);
+    cameras = await availableCameras();
     pos.add(currentPosition.latitude);
     pos.add(currentPosition.longitude);
     return pos;
@@ -88,7 +94,7 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               // Empty container for the map
               SizedBox( 
-                height: MediaQuery.of(context).size.height/2,
+                height: MediaQuery.of(context).size.height/1.5,
                 width: MediaQuery.of(context).size.width,
                 child: 
                   FlutterMap(
@@ -147,14 +153,14 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
               ),
-              const SizedBox(height: 50.0),
+              
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
                   // Button 1
                   SizedBox(
                     height: MediaQuery.of(context).size.height/8,
-                    width: MediaQuery.of(context).size.width/3,
+                    width: MediaQuery.of(context).size.width/2,
                     child: ElevatedButton(
                       onPressed: () async {
                         double val = await getReturnValue();
@@ -165,8 +171,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                 builder: (context) {
                                   return Center(
                                     child: AlertDialog(
-                                      title: Text('Wow! You are in campus!'),
-                                      content: Text('Please click the "Face log" button to register your attendance.'),
+                                      title: const Text('Wow! You are in campus!'),
+                                      content: const Text('Please click the "Face log" button to register your attendance.'),
                                       actions: [
                                         TextButton(
                                           onPressed: () {
@@ -174,9 +180,12 @@ class _HomeScreenState extends State<HomeScreen> {
                                             Navigator.push(
                                     context,
                                     MaterialPageRoute(
-                                        builder: (context) => Attendace()));
+                                        builder: (context) => captureFace(
+        // Pass the appropriate camera to the TakePictureScreen widget.
+        camera: cameras.length>1?cameras.last:cameras.first,
+      ),));
                                           },
-                                          child: Text('Face log'),
+                                          child: const Text('Face log'),
                                         ),
                                       ],
                                     ),
@@ -189,14 +198,14 @@ class _HomeScreenState extends State<HomeScreen> {
                                   context: context,
                                   builder: (context) {
                                     return AlertDialog(
-                                      title: Text('Sorry You are not in campus!'),
-                                      content: Text('Please retry after you reach the campus.'),
+                                      title: const Text('Sorry You are not in campus!'),
+                                      content: const Text('Please retry after you reach the campus.'),
                                       actions: [
                                         TextButton(
                                           onPressed: () {
                                             Navigator.of(context).pop();
                                           },
-                                          child: Text('OK'),
+                                          child: const Text('OK'),
                                         ),
                                       ],
                                     );
