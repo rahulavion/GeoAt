@@ -38,7 +38,6 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   bool hasLocationPermission = false;
-  1q
   @override
   void initState() {
     super.initState();
