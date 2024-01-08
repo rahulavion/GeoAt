@@ -1,0 +1,16 @@
+GeoAt Imp points:
+
+to show no of days present.
+
+MYSQL DB:
+
+CREATE USER 'global'@'%' IDENTIFIED BY 'rahul@1234';
+GRANT ALL PRIVILEGES ON *.* TO 'global'@'%';
+
+USER -> PASSWORD
+global@% -> rahul@1234
+rahuljha@localhost -> root@1234
+
+Table: Attendance
+
+S.no(Auto Increament) : RollNumber(Primary key) : Name : Attendance(default value 0)
