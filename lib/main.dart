@@ -1,5 +1,6 @@
 // ignore_for_file: use_build_context_synchronously
 
+import 'dart:convert';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/plugin_api.dart';
@@ -7,14 +8,12 @@ import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import 'capture.dart';
 import 'package:camera/camera.dart';
-
+import 'package:http/http.dart' as http;
 
 Future<void> main() async {
   runApp(const MyApp());
   WidgetsFlutterBinding.ensureInitialized();
 }
-
-
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
@@ -44,10 +43,10 @@ class _HomeScreenState extends State<HomeScreen> {
     getLatLng();
   }
 
-  LatLng? ll()  {
-    LatLng? latLng=LatLng(10.931620, 76.984920);
-    return latLng;
-  }
+  // LatLng? ll()  {
+  //   LatLng? latLng=LatLng(10.931620, 76.984920);
+  //   return latLng;
+  // }
 
   double calculateDistance(lat1, lon1, lat2, lon2) {
     var p = 0.017453292519943295;
@@ -58,26 +57,38 @@ class _HomeScreenState extends State<HomeScreen> {
     return 12742 * asin(sqrt(a)) * 1000;
   }
 
-late List<CameraDescription> cameras;
-  List pos = [];
-  Future<List> getLatLng() async {
+  late List<CameraDescription> cameras;
+  List<String> pos = [];
+  void getLatLng() async {
     Position currentPosition = await Geolocator.getCurrentPosition(
-    desiredAccuracy: LocationAccuracy.high);
+        desiredAccuracy: LocationAccuracy.high);
     cameras = await availableCameras();
-    pos.add(currentPosition.latitude);
-    pos.add(currentPosition.longitude);
-    return pos;
+    pos.add(currentPosition.latitude.toString());
+    pos.add(currentPosition.longitude.toString());
   }
 
-  Future<double> getReturnValue() async {
-    List currentPosition = await getLatLng();
-    double distance;
-    distance = calculateDistance(
-        currentPosition[0], currentPosition[1], 10.931620, 76.984920);
-    return distance;
+  Future<int> getReturnValue() async {
+    en_roll = base64Encode(utf8.encode('geoat:$roll'));
+    String myurl = 'http://localhost:5000/locate';
+    final url = Uri.parse(myurl);
+    final body = {
+      "roll": en_roll,
+      "lat": pos[0],
+      "lng": pos[1]
+    };
+    var res = await http.post(url, body: body);
+    final regex = RegExp(r'"([^"]*)"'); // Matches single-quoted words
+    final matches = regex.allMatches(res.body);
+    List<String> quotedWords = [];
+    for (Match match in matches) {
+       quotedWords.add(match.group(1)!); // Extract the matched word
+    }
+    return int.parse(quotedWords[1]);
   }
 
-  bool isButtonEnabled = false;
+  String roll = '';
+  String en_roll = '';
+  bool _isButtonEnabled = false;
 
   @override
   Widget build(BuildContext context) {
@@ -92,26 +103,26 @@ late List<CameraDescription> cameras;
           child: Column(
             children: [
               // Empty container for the map
-              SizedBox( 
-                height: MediaQuery.of(context).size.height/1.5,
+              SizedBox(
+                height: MediaQuery.of(context).size.height / 1.5,
                 width: MediaQuery.of(context).size.width,
-                child: 
-                  FlutterMap(
+                child: FlutterMap(
                   options: MapOptions(
-                center: ll(),
-              ),
-              layers: [
-                TileLayerOptions(
-                  urlTemplate: 'https://api.mapbox.com/styles/v1/rahuljha1908/clmol74e6004601nsh41pgf8n/tiles/256/{z}/{x}/{y}@2x?access_token=pk.eyJ1IjoicmFodWxqaGExOTA4IiwiYSI6ImNsbW5vbGx6bjA3ZXAyc285OTY3aGpnNmQifQ.44Kn_Nrp5dPZETJUlEuEFA',
-                  additionalOptions: {
-                    'accessToken': 'pk.eyJ1IjoicmFodWxqaGExOTA4IiwiYSI6ImNsbW5vcXk3dTBwYnMya3IyY3ZjNHdwdWIifQ.u0YQI5lNMbnB-Lh7tmPy_Q',
-                    'id' : 'mapbox.mapbox-bathymetry-v2'
-                  }
+                    center: LatLng(10.931620, 76.984920),
+                  ),
+                  layers: [
+                    TileLayerOptions(
+                        urlTemplate:
+                            'https://api.mapbox.com/styles/v1/rahuljha1908/clmol74e6004601nsh41pgf8n/tiles/256/{z}/{x}/{y}@2x?access_token=pk.eyJ1IjoicmFodWxqaGExOTA4IiwiYSI6ImNsbW5vbGx6bjA3ZXAyc285OTY3aGpnNmQifQ.44Kn_Nrp5dPZETJUlEuEFA',
+                        additionalOptions: {
+                          'accessToken':
+                              'pk.eyJ1IjoicmFodWxqaGExOTA4IiwiYSI6ImNsbW5vcXk3dTBwYnMya3IyY3ZjNHdwdWIifQ.u0YQI5lNMbnB-Lh7tmPy_Q',
+                          'id': 'mapbox.mapbox-bathymetry-v2'
+                        }),
+                  ],
                 ),
-              ],
               ),
-              ),
-              
+
               const Card(
                 child: Padding(
                   padding: EdgeInsets.all(8.0),
@@ -152,53 +163,77 @@ late List<CameraDescription> cameras;
                   ),
                 ),
               ),
-              
+
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
+                  SizedBox(
+                    height: MediaQuery.of(context).size.height / 8,
+                    width: MediaQuery.of(context).size.width / 3,
+                    child: TextField(
+                      decoration: const InputDecoration(
+                        hintText: 'Roll Number',
+                        border: UnderlineInputBorder(),
+                      ),
+                      onChanged: (value) {
+                        setState(() {
+                          roll = value;
+                          _isButtonEnabled = value.isNotEmpty;
+                        });
+                      },
+                    ),
+                  ),
                   // Button 1
                   SizedBox(
-                    height: MediaQuery.of(context).size.height/8,
-                    width: MediaQuery.of(context).size.width/2,
+                    height: MediaQuery.of(context).size.height / 8,
+                    width: MediaQuery.of(context).size.width / 3,
                     child: ElevatedButton(
-                      onPressed: () async {
-                        double val = await getReturnValue();
-                        int isGeo = val.toInt();
-                        if (isGeo > 100) {
-                          showDialog(
-                                context: context,
-                                builder: (context) {
-                                  return Center(
-                                    child: AlertDialog(
-                                      title: const Text('Wow! You are in campus!'),
-                                      content: const Text('Please click the "Face log" button to register your attendance.'),
-                                      actions: [
-                                        TextButton(
-                                          onPressed: () {
-                                            Navigator.of(context).pop();
-                                            Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                        builder: (context) => captureFace(
-        // Pass the appropriate camera to the TakePictureScreen widget.
-        camera: cameras.length>1?cameras.last:cameras.first,
-      ),));
-                                          },
-                                          child: const Text('Face log'),
-                                        ),
-                                      ],
-                                    ),
-                                  );
-                                },
-                              );
-                            }
-                            else{
-                              showDialog(
+                      onPressed: _isButtonEnabled
+                          ? () async {
+                              int val = await getReturnValue();
+                              int isGeo = val.toInt();
+                              if (isGeo > 100) {
+                                showDialog(
+                                  context: context,
+                                  builder: (context) {
+                                    return Center(
+                                      child: AlertDialog(
+                                        title: const Text(
+                                            'Wow! You are in campus!'),
+                                        content: const Text(
+                                            'Please click the "Face log" button to register your attendance.'),
+                                        actions: [
+                                          TextButton(
+                                            onPressed: () {
+                                              Navigator.of(context).pop();
+                                              Navigator.push(
+                                                  context,
+                                                  MaterialPageRoute(
+                                                    builder: (context) =>
+                                                        captureFace(
+                                                      // Pass the appropriate camera to the TakePictureScreen widget.
+                                                      camera: cameras.length > 1
+                                                          ? cameras.last
+                                                          : cameras.first,
+                                                    ),
+                                                  ));
+                                            },
+                                            child: const Text('Face log'),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  },
+                                );
+                              } else {
+                                showDialog(
                                   context: context,
                                   builder: (context) {
                                     return AlertDialog(
-                                      title: const Text('Sorry You are not in campus!'),
-                                      content: const Text('Please retry after you reach the campus.'),
+                                      title: const Text(
+                                          'Sorry You are not in campus!'),
+                                      content: const Text(
+                                          'Please retry after you reach the campus.'),
                                       actions: [
                                         TextButton(
                                           onPressed: () {
@@ -210,13 +245,15 @@ late List<CameraDescription> cameras;
                                     );
                                   },
                                 );
+                              }
                             }
-                      },
+                          : null,
                       child: Text(
                         'Locate me',
-                        style: TextStyle(fontSize: MediaQuery.of(context).textScaleFactor * 30.5),
-                        ),
-
+                        style: TextStyle(
+                            fontSize:
+                                MediaQuery.of(context).textScaleFactor * 15),
+                      ),
                     ),
                   ),
                 ],
@@ -228,4 +265,3 @@ late List<CameraDescription> cameras;
     );
   }
 }
-

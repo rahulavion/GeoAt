@@ -1,5 +1,6 @@
 import cv2
 import os
+import math
 import base64
 import numpy as np
 from sklearn.neighbors import KNeighborsClassifier
@@ -12,6 +13,7 @@ from datetime import date
 
 #### Defining Flask App
 app = Flask(__name__)
+rollNumber=0
 
 #### Initializing VideoCapture object to access WebCam
 face_detector = cv2.CascadeClassifier('haarcascade_frontalface_default.xml')
@@ -30,6 +32,30 @@ if not os.path.isdir('static/faces'):
 if f'Attendance-{datetoday}.csv' not in os.listdir('Attendance'):
     with open(f'Attendance/Attendance-{datetoday}.csv','w') as f:
         f.write('Name,Roll,Time')
+
+
+
+def calculate_distance(lat1, lon1):
+
+    # Convert degrees to radians
+    lat1_rad = math.radians(lat1)
+    lon1_rad = math.radians(lon1)
+    lat2_rad = math.radians(10.931620)
+    lon2_rad = math.radians(76.984920)
+
+    # Earth's radius in meters
+    earth_radius = 6371000
+
+    # Calculate the central angle
+    delta_lat = lat2_rad - lat1_rad
+    delta_lon = lon2_rad - lon1_rad
+
+    a = math.sin(delta_lat / 2) ** 2 + math.cos(lat1_rad) * math.cos(lat2_rad) * math.sin(delta_lon / 2) ** 2
+    c = 2 * math.asin(math.sqrt(a))
+
+    # Calculate the distance
+    distance = earth_radius * c
+    return round(distance)
 
 
 #### Identify face using ML model
@@ -135,27 +161,32 @@ def add_newUser():
 
 @app.route("/geoat",methods = ['GET','POST'])
 def find_name_from_image_request():
-    encoded_image=request.form['name']
+    encoded_image=request.form['face']
+    #rollNumber=request.form['rollNumber']
     img=decode_base64_image(encoded_image)
     img.save("decoded_image.jpg")
-    img_path="/home/rently/Downloads/attempt-1/decoded_image.jpg"
+    img_path="decoded_image.jpg"
     ans=identify_image(img_path)
     data = {
         "identified_name": ans[0],
         "roll_number": ans[1],
     }
+    if(rollNumber==ans[1]):
+        return data
+    return "Not a valid user"
 
-    return { 'statusCode': 200,
-     'headers': {
-  "Access-Control-Allow-Origin": "*", 
-  "Access-Control-Allow-Credentials": 'true', 
-  "Access-Control-Allow-Headers": "Origin,Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,locale",
-  "Access-Control-Allow-Methods": "GET, POST, OPTIONS"
-    },
-    'body': data
-    }
-
-
+@app.route('/locate',methods = ['GET','POST'])
+def locate():
+    global rollNumber
+    encoded_roll=request.form['roll']
+    lat=request.form['lat']
+    lng=request.form['lng']
+    decoded_data = base64.b64decode(encoded_roll).decode('utf-8')
+    key, value = decoded_data.split(':')
+    rollNumber = value
+    distance = calculate_distance(float(lat), float(lng))
+    return {'distance':str(distance)}
+    
 
 #### Our main function which runs the Flask App
 if __name__ == '__main__':
