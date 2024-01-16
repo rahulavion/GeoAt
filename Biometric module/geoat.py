@@ -10,7 +10,6 @@ from PIL import Image
 from flask import Flask,request,render_template
 from datetime import date
 
-
 #### Defining Flask App
 app = Flask(__name__)
 rollNumber=0
@@ -33,23 +32,19 @@ if f'Attendance-{datetoday}.csv' not in os.listdir('Attendance'):
     with open(f'Attendance/Attendance-{datetoday}.csv','w') as f:
         f.write('Name,Roll,Time')
 
-
-
+#### Get lat and long & find distance between main and given point
 def calculate_distance(lat1, lon1):
-
     # Convert degrees to radians
     lat1_rad = math.radians(lat1)
     lon1_rad = math.radians(lon1)
     lat2_rad = math.radians(10.931620)
     lon2_rad = math.radians(76.984920)
-
     # Earth's radius in meters
     earth_radius = 6371000
 
     # Calculate the central angle
     delta_lat = lat2_rad - lat1_rad
     delta_lon = lon2_rad - lon1_rad
-
     a = math.sin(delta_lat / 2) ** 2 + math.cos(lat1_rad) * math.cos(lat2_rad) * math.sin(delta_lon / 2) ** 2
     c = 2 * math.asin(math.sqrt(a))
 
@@ -67,7 +62,6 @@ def identify_face(facearray):
 def identify_image(img):
     image = cv2.imread(img)
     (x,y,w,h) = extract_faces(image)[0]
-
     cv2.rectangle(image,(x, y), (x+w, y+h), (255, 0, 20), 2)
     face = cv2.resize(image[y:y+h,x:x+w], (50, 50))
     identified_person = identify_face(face.reshape(1,-1))[0]
@@ -81,6 +75,10 @@ def decode_base64_image(encoded_image):
   image = Image.open(image_data)
   return image
 
+#to decode data
+def decode_data(data):
+    decrypted_data = base64.b64decode(data).decode('utf-8')
+    return decrypted_data
 
 #### get a number of total registered users
 def totalreg():
@@ -158,36 +156,37 @@ def add_newUser():
     train_model()
     return render_template('home.html',totalreg=totalreg(),datetoday2=datetoday2) 
 
-
+#### API: This function will get encoded image and identify image after decoding and return identified name and roll number if 
 @app.route("/geoat",methods = ['GET','POST'])
 def find_name_from_image_request():
+    global rollNumber
+    rollNumber=decode_data(request.form['rollNumber'])
     encoded_image=request.form['face']
-    #rollNumber=request.form['rollNumber']
     img=decode_base64_image(encoded_image)
     img.save("decoded_image.jpg")
     img_path="decoded_image.jpg"
     ans=identify_image(img_path)
-    data = {
-        "identified_name": ans[0],
-        "roll_number": ans[1],
-    }
     if(rollNumber==ans[1]):
+        data = {
+                "identified_name": ans[0],
+                "roll_number": ans[1],
+                }
         return data
-    return "Not a valid user"
+    else:
+        data={
+            "error":"Face do not match with roll number", 
+            "Message":"Error"
+            }
+        return data
 
+#### API: This function will get lat and long from frontend and return distance from geopoint
 @app.route('/locate',methods = ['GET','POST'])
 def locate():
-    global rollNumber
-    encoded_roll=request.form['roll']
-    lat=request.form['lat']
-    lng=request.form['lng']
-    decoded_data = base64.b64decode(encoded_roll).decode('utf-8')
-    key, value = decoded_data.split(':')
-    rollNumber = value
-    distance = calculate_distance(float(lat), float(lng))
+    lat=float(decode_data(request.form['lat']))
+    lng=float(decode_data(request.form['lng']))
+    distance = calculate_distance(lat, lng)
     return {'distance':str(distance)}
     
-
 #### Our main function which runs the Flask App
 if __name__ == '__main__':
     app.run()

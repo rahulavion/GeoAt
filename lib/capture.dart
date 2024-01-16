@@ -5,7 +5,6 @@ import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:geo_attendance/main.dart';
 import 'dart:async';
-import 'package:http/http.dart' as http;
 
 class captureFace extends StatefulWidget {
   const captureFace({super.key, required this.camera});
@@ -121,58 +120,46 @@ class _captureFaceState extends State<captureFace> {
                     try {
                       await _initializeControllerFuture;
                       final image = await _controller.takePicture();
-                      //File imageFile = File(image.path);
-
-                      //var request = http.MultipartRequest("GET", Uri.parse("http://localhost:5000/geoat"));
                       final bytes = await image.readAsBytes();
                       var img = base64Encode(bytes);
-                      String myurl = 'http://localhost:5000/geoat';
-                      final url = Uri.parse(myurl);
                       final body = {
                         'face': img,
-                        'rollNumber': "12",
+                        'rollNumber': encode(roll),
                       };
-                      var res = await http.post(url, body: body);
-                      final regex =
-                          RegExp(r'"([^"]*)"'); // Matches single-quoted words
-                      final matches = regex.allMatches(res.body);
-
-                      List<String> quotedWords = [];
-                      for (Match match in matches) {
-                        quotedWords
-                            .add(match.group(1)!); // Extract the matched word
-                        
-                      }
+                      response = await sendRequest('http://localhost:5000/geoat',body);
                       // ignore: unnecessary_null_comparison
-                      if (quotedWords[1] != null) {
-                        name = quotedWords[1];
-                        rollNo = quotedWords[3];
+                      if (response[1] != null) {
+                        name = response[1];
+                        rollNo = response[3];
                       }
 
                       if (!mounted) return;
-                        showDialog(
-                          context: context,
-                          builder: (context) {
-                            return AlertDialog(
-                              title: Text('Attendance'),
-                              content: Text('$name\n$rollNo'),
-                              actions: [
-                                ElevatedButton(
-                                  onPressed: () {
-                                    _controller.dispose();
-                                    Navigator.pop(context); // Close the popup
-                                    Navigator.push(context, MaterialPageRoute(
-                                                  builder: (context) => const HomeScreen(),
-                                                  )
-                                                  ); // Navigate to the home page
-                                  },
-                                  child: Text('Close and Go Home'),
-                                ),
-                              ],
-                            );
-                            },
-                        );
+                      showDialog(
+                        context: context,
+                        builder: (context) {
+                          return AlertDialog(
+                            title: const Text('Attendance'),
+                            content: Text('$name\n$rollNo'),
+                            actions: [
+                              ElevatedButton(
+                                onPressed: () {
+                                  _controller.dispose();
+                                  Navigator.pop(context); // Close the popup
+                                  Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) =>
+                                            const HomeScreen(),
+                                      )); // Navigate to the home page
+                                },
+                                child: const Text('Close and Go Home'),
+                              ),
+                            ],
+                          );
+                        },
+                      );
                     } catch (e) {
+                      // ignore: avoid_print
                       print(e.toString());
                     }
                   },

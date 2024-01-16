@@ -1,7 +1,5 @@
 // ignore_for_file: use_build_context_synchronously
-
 import 'dart:convert';
-import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/plugin_api.dart';
 import 'package:geolocator/geolocator.dart';
@@ -14,6 +12,25 @@ Future<void> main() async {
   runApp(const MyApp());
   WidgetsFlutterBinding.ensureInitialized();
 }
+
+String encode(data) {
+  String encryptedData = base64Encode(utf8.encode('$data'));
+  return encryptedData;
+}
+
+Future<List> sendRequest(url, body) async {
+  final myurl = Uri.parse(url);
+  var res = await http.post(myurl, body: body);
+  final regex = RegExp(r'"([^"]*)"'); // Matches single-quoted words
+  final matches = regex.allMatches(res.body);
+  List<String> quotedWords = [];
+  for (Match match in matches) {
+    quotedWords.add(match.group(1)!); // Extract the matched word
+  }
+  return quotedWords;
+}
+List response = [];
+String roll = '';
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
@@ -37,28 +54,17 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   bool hasLocationPermission = false;
+  bool _isButtonEnabled = false;
+  late List<CameraDescription> cameras;
+  List<String> pos = [];
+  
+
   @override
   void initState() {
     super.initState();
     getLatLng();
   }
 
-  // LatLng? ll()  {
-  //   LatLng? latLng=LatLng(10.931620, 76.984920);
-  //   return latLng;
-  // }
-
-  double calculateDistance(lat1, lon1, lat2, lon2) {
-    var p = 0.017453292519943295;
-    var c = cos;
-    var a = 0.5 -
-        c((lat2 - lat1) * p) / 2 +
-        c(lat1 * p) * c(lat2 * p) * (1 - c((lon2 - lon1) * p)) / 2;
-    return 12742 * asin(sqrt(a)) * 1000;
-  }
-
-  late List<CameraDescription> cameras;
-  List<String> pos = [];
   void getLatLng() async {
     Position currentPosition = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.high);
@@ -67,28 +73,14 @@ class _HomeScreenState extends State<HomeScreen> {
     pos.add(currentPosition.longitude.toString());
   }
 
-  Future<int> getReturnValue() async {
-    en_roll = base64Encode(utf8.encode('geoat:$roll'));
-    String myurl = 'http://localhost:5000/locate';
-    final url = Uri.parse(myurl);
-    final body = {
-      "roll": en_roll,
-      "lat": pos[0],
-      "lng": pos[1]
+  Future<int> getReturnValue() async {    
+    final body = {  
+      "lat": encode(pos[0]),
+      "lng": encode(pos[1])
     };
-    var res = await http.post(url, body: body);
-    final regex = RegExp(r'"([^"]*)"'); // Matches single-quoted words
-    final matches = regex.allMatches(res.body);
-    List<String> quotedWords = [];
-    for (Match match in matches) {
-       quotedWords.add(match.group(1)!); // Extract the matched word
-    }
-    return int.parse(quotedWords[1]);
+    response = await sendRequest('http://localhost:5000/locate',body);
+    return int.parse(response[1]);
   }
-
-  String roll = '';
-  String en_roll = '';
-  bool _isButtonEnabled = false;
 
   @override
   Widget build(BuildContext context) {
@@ -106,20 +98,27 @@ class _HomeScreenState extends State<HomeScreen> {
               SizedBox(
                 height: MediaQuery.of(context).size.height / 1.5,
                 width: MediaQuery.of(context).size.width,
-                child: FlutterMap(
-                  options: MapOptions(
-                    center: LatLng(10.931620, 76.984920),
+                child: Card(
+                  margin: const EdgeInsets.all(20),
+                  shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(2.0),
+                            side: const BorderSide(color: Colors.purple, width: 5.0),
+                          ),
+                  child: FlutterMap(
+                    options: MapOptions(
+                      center:LatLng(10.931620, 76.984920),
+                    ),
+                    layers: [
+                      TileLayerOptions(
+                          urlTemplate:
+                              'https://api.mapbox.com/styles/v1/rahuljha1908/clmol74e6004601nsh41pgf8n/tiles/256/{z}/{x}/{y}@2x?access_token=pk.eyJ1IjoicmFodWxqaGExOTA4IiwiYSI6ImNsbW5vbGx6bjA3ZXAyc285OTY3aGpnNmQifQ.44Kn_Nrp5dPZETJUlEuEFA',
+                          additionalOptions: {
+                            'accessToken':
+                                'pk.eyJ1IjoicmFodWxqaGExOTA4IiwiYSI6ImNsbW5vcXk3dTBwYnMya3IyY3ZjNHdwdWIifQ.u0YQI5lNMbnB-Lh7tmPy_Q',
+                            'id': 'mapbox.mapbox-bathymetry-v2'
+                          }),
+                    ],
                   ),
-                  layers: [
-                    TileLayerOptions(
-                        urlTemplate:
-                            'https://api.mapbox.com/styles/v1/rahuljha1908/clmol74e6004601nsh41pgf8n/tiles/256/{z}/{x}/{y}@2x?access_token=pk.eyJ1IjoicmFodWxqaGExOTA4IiwiYSI6ImNsbW5vbGx6bjA3ZXAyc285OTY3aGpnNmQifQ.44Kn_Nrp5dPZETJUlEuEFA',
-                        additionalOptions: {
-                          'accessToken':
-                              'pk.eyJ1IjoicmFodWxqaGExOTA4IiwiYSI6ImNsbW5vcXk3dTBwYnMya3IyY3ZjNHdwdWIifQ.u0YQI5lNMbnB-Lh7tmPy_Q',
-                          'id': 'mapbox.mapbox-bathymetry-v2'
-                        }),
-                  ],
                 ),
               ),
 
@@ -239,7 +238,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                           onPressed: () {
                                             Navigator.of(context).pop();
                                           },
-                                          child: const Text('OK'),
+                                          child: const Text('Retry'),
                                         ),
                                       ],
                                     );
