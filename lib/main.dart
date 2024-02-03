@@ -2,11 +2,14 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/plugin_api.dart';
+import 'package:geo_attendance/help.dart';
+import 'package:geo_attendance/logs.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import 'capture.dart';
 import 'package:camera/camera.dart';
 import 'package:http/http.dart' as http;
+
 
 Future<void> main() async {
   runApp(const MyApp());
@@ -84,6 +87,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    Map<String, String> body;
     return MaterialApp(
       title: 'GeoAt',
       theme: ThemeData(primarySwatch: Colors.purple),
@@ -91,6 +95,7 @@ class _HomeScreenState extends State<HomeScreen> {
         appBar: AppBar(
           title: const Text(' GeoAt: Attendance Tracking'),
         ),
+        backgroundColor: const Color.fromARGB(255, 218, 167, 223),
         body: SingleChildScrollView(
           child: Column(
             children: [
@@ -98,7 +103,7 @@ class _HomeScreenState extends State<HomeScreen> {
               SizedBox(
                 height: MediaQuery.of(context).size.height / 1.5,
                 width: MediaQuery.of(context).size.width,
-                child: Card(
+                child: pos.length != 0 ? Card(
                   margin: const EdgeInsets.all(20),
                   shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(2.0),
@@ -106,7 +111,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                   child: FlutterMap(
                     options: MapOptions(
-                      center:LatLng(10.931620, 76.984920),
+                      center:LatLng(double.parse(pos[0]),double.parse(pos[1])),
                     ),
                     layers: [
                       TileLayerOptions(
@@ -116,13 +121,17 @@ class _HomeScreenState extends State<HomeScreen> {
                             'accessToken':
                                 'pk.eyJ1IjoicmFodWxqaGExOTA4IiwiYSI6ImNsbW5vcXk3dTBwYnMya3IyY3ZjNHdwdWIifQ.u0YQI5lNMbnB-Lh7tmPy_Q',
                             'id': 'mapbox.mapbox-bathymetry-v2'
-                          }),
+                          },
+                          minZoom: 12
+                          ),
+
                     ],
                   ),
-                ),
+                ): const Center(child: CircularProgressIndicator()),
               ),
 
               const Card(
+                color: Color.fromARGB(255, 218, 167, 223),
                 child: Padding(
                   padding: EdgeInsets.all(8.0),
                   child: Column(
@@ -166,27 +175,9 @@ class _HomeScreenState extends State<HomeScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  SizedBox(
-                    height: MediaQuery.of(context).size.height / 8,
-                    width: MediaQuery.of(context).size.width / 3,
-                    child: TextField(
-                      decoration: const InputDecoration(
-                        hintText: 'Roll Number',
-                        border: UnderlineInputBorder(),
-                      ),
-                      onChanged: (value) {
-                        setState(() {
-                          roll = value;
-                          _isButtonEnabled = value.isNotEmpty;
-                        });
-                      },
-                    ),
-                  ),
                   // Button 1
                   SizedBox(
-                    height: MediaQuery.of(context).size.height / 8,
-                    width: MediaQuery.of(context).size.width / 3,
-                    child: ElevatedButton(
+                    child: IconButton (
                       onPressed: _isButtonEnabled
                           ? () async {
                               int val = await getReturnValue();
@@ -247,20 +238,61 @@ class _HomeScreenState extends State<HomeScreen> {
                               }
                             }
                           : null,
-                      child: Text(
-                        'Locate me',
-                        style: TextStyle(
-                            fontSize:
-                                MediaQuery.of(context).textScaleFactor * 15),
-                      ),
+                      icon: const Icon(Icons.location_history),
+                      iconSize: 40,
+                      tooltip: "Locate me",
                     ),
                   ),
+                  SizedBox(
+                    height: MediaQuery.of(context).size.height / 8,
+                    width: MediaQuery.of(context).size.width / 3,
+                    child: TextField(
+                      style: const TextStyle(color: Colors.white),
+                      decoration: const InputDecoration(
+                        hintText: 'Roll Number',
+                        border: UnderlineInputBorder(),
+                      ),
+                      onChanged: (value) {
+                        setState(() {
+                          roll = value;
+                          _isButtonEnabled = value.isNotEmpty;
+                        });
+                        },
+                    ),
+                  ),
+                  SizedBox(
+                    child: IconButton(
+                      onPressed: _isButtonEnabled
+                          ? () async => {
+                            body = {  
+                              "rollNumber": encode(roll),
+                            },
+                            response = await sendRequest('http://localhost:5000/logs',body),
+                            Navigator.push(context, MaterialPageRoute(builder: (context)=> Logs(attendance_logs: response)))
+                          }:null,
+                      icon: const Icon(Icons.save), 
+                      iconSize: 40,
+                      tooltip: "Attendance logs",
+                      ),
+                  )
                 ],
               ),
             ],
           ),
         ),
+        floatingActionButtonLocation: FloatingActionButtonLocation.endDocked,
+        floatingActionButton: FloatingActionButton(
+          tooltip: "Get Help",
+          child: const Icon(Icons.question_answer),
+          onPressed: () {
+            Navigator.push(context, MaterialPageRoute(builder: (context)=>const Help()));
+          },
+          
+        ),
       ),
     );
   }
 }
+
+
+

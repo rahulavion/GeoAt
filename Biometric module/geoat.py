@@ -9,16 +9,19 @@ from io import BytesIO
 from PIL import Image
 from flask import Flask,request,render_template
 from datetime import date
+import datetime
+import mysql.connector
 
 #### Defining Flask App
 app = Flask(__name__)
 rollNumber=0
 
+
 #### Initializing VideoCapture object to access WebCam
 face_detector = cv2.CascadeClassifier('haarcascade_frontalface_default.xml')
 
 #### Saving Date today in 2 different formats
-datetoday = date.today().strftime("%m_%d_%y")
+datetoday = date.today().strftime("%Y_%m_%d")
 datetoday2 = date.today().strftime("%d-%B-%Y")
 
 #### If these directories don't exist, create them
@@ -166,6 +169,12 @@ def find_name_from_image_request():
     img.save("decoded_image.jpg")
     img_path="decoded_image.jpg"
     ans=identify_image(img_path)
+    cursor.execute("SELECT {} FROM attendance WHERE rollno='{}';".format(datetoday,ans[1]))
+    atndnce=cursor.fetchone()
+    atndnce=atndnce[0]+1
+    query="UPDATE attendance SET {}={} WHERE rollno='{}';".format(datetoday,atndnce,ans[1])
+    cursor.execute(query)
+    cnx.commit()
     if(rollNumber==ans[1]):
         data = {
                 "identified_name": ans[0],
@@ -185,8 +194,37 @@ def locate():
     lat=float(decode_data(request.form['lat']))
     lng=float(decode_data(request.form['lng']))
     distance = calculate_distance(lat, lng)
+    cursor.execute("SHOW COLUMNS FROM attendance LIKE '{}';".format(datetoday))
+    ans=cursor.fetchall()
+    if not ans: 
+        cursor.execute("ALTER TABLE attendance ADD {} INT(20) DEFAULT 0;".format(datetoday))
+
     return {'distance':str(distance)}
+
+@app.route('/logs',methods=['GET','POST'])
+def logs():
+    rollNumber=decode_data(request.form['rollNumber'])
+    query=f"SELECT * FROM attendance WHERE rollno='{rollNumber}'"
+    cursor.execute(query)
+    ans=cursor.fetchall()[0][-7:-1]
+        
+    today = datetime.date.today()
+    past_dates = [today - datetime.timedelta(days=x) for x in range(1, 6)][::-1]
+    data={}
+    index=1
+    for dd in past_dates:
+        z=str(dd).replace('-','_')
+        data[z]=str(ans[index])
+        index+=1
+    #print(data)
+    return data
     
 #### Our main function which runs the Flask App
 if __name__ == '__main__':
+    cnx = mysql.connector.connect(user='global', password='rahul@1234',
+                              host='localhost',
+                              database='geoat'
+                              )
+    cursor = cnx.cursor()
     app.run()
+    cnx.close()

@@ -2,15 +2,21 @@ import cv2
 import os
 from flask import Flask,request,render_template
 from datetime import date
-from datetime import datetime
 import numpy as np
 from sklearn.neighbors import KNeighborsClassifier
 import pandas as pd
 import joblib
+import mysql.connector
 
 #### Defining Flask App
 app = Flask(__name__)
 
+cnx = mysql.connector.connect(user='global', password='rahul@1234',
+                              host='localhost',
+                              database='geoat'
+                              )
+
+cursor = cnx.cursor()
 
 #### Saving Date today in 2 different formats
 datetoday = date.today().strftime("%m_%d_%y")
