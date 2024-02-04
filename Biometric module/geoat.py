@@ -207,9 +207,6 @@ def locate():
 @app.route('/logs',methods=['GET','POST'])
 def logs():
     rollNumber=decode_data(request.form['rollNumber'])
-    query=f"SELECT * FROM attendance WHERE rollno='{rollNumber}'"
-    cursor.execute(query)
-    ans=cursor.fetchall()[0][-5:][::-1]
 
     cursor.execute("SHOW COLUMNS FROM attendance;")
     ans=cursor.fetchall()
@@ -218,10 +215,16 @@ def logs():
     for field in ans:
         past_dates.append(field[0])
     past_dates=past_dates[:5]
-        
-    today = datetime.date.today()
-    past_dates = [today - datetime.timedelta(days=x) for x in range(1, 6)][::-1]
+
+    query=f"SELECT * FROM attendance WHERE rollno='{rollNumber}'"
+    cursor.execute(query)
+    _ans=cursor.fetchall()[0][-5:][::-1]
+    ans = [str(x) for x in _ans]
+
+
+    
     data=dict(zip(past_dates,ans))
+    print(data)
     return data
     
 #### Our main function which runs the Flask App
