@@ -11,9 +11,11 @@ from flask import Flask,request,render_template
 from datetime import date
 import datetime
 import mysql.connector
+from flask_cors import CORS
 
 #### Defining Flask App
 app = Flask(__name__)
+CORS(app)
 rollNumber=0
 
 
@@ -171,10 +173,11 @@ def find_name_from_image_request():
     ans=identify_image(img_path)
     cursor.execute("SELECT {} FROM attendance WHERE rollno='{}';".format(datetoday,ans[1]))
     atndnce=cursor.fetchone()
-    atndnce=atndnce[0]+1
-    query="UPDATE attendance SET {}={} WHERE rollno='{}';".format(datetoday,atndnce,ans[1])
-    cursor.execute(query)
-    cnx.commit()
+    if(atndnce[0]<2):
+        atndnce=atndnce[0]+1
+        query="UPDATE attendance SET {}={} WHERE rollno='{}';".format(datetoday,atndnce,ans[1])
+        cursor.execute(query)
+        cnx.commit()
     if(rollNumber==ans[1]):
         data = {
                 "identified_name": ans[0],
@@ -206,17 +209,19 @@ def logs():
     rollNumber=decode_data(request.form['rollNumber'])
     query=f"SELECT * FROM attendance WHERE rollno='{rollNumber}'"
     cursor.execute(query)
-    ans=cursor.fetchall()[0][-7:-1]
+    ans=cursor.fetchall()[0][-5:][::-1]
+
+    cursor.execute("SHOW COLUMNS FROM attendance;")
+    ans=cursor.fetchall()
+    ans=ans[::-1]
+    past_dates = []
+    for field in ans:
+        past_dates.append(field[0])
+    past_dates=past_dates[:5]
         
     today = datetime.date.today()
     past_dates = [today - datetime.timedelta(days=x) for x in range(1, 6)][::-1]
-    data={}
-    index=1
-    for dd in past_dates:
-        z=str(dd).replace('-','_')
-        data[z]=str(ans[index])
-        index+=1
-    #print(data)
+    data=dict(zip(past_dates,ans))
     return data
     
 #### Our main function which runs the Flask App
