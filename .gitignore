@@ -9,6 +9,8 @@
 .history
 .svn/
 migrate_working_dir/
+Biometric module/Attendance/
+decoded_image.jpg
 
 # IntelliJ related
 *.iml
