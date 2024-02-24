@@ -25,17 +25,8 @@ face_detector = cv2.CascadeClassifier('haarcascade_frontalface_default.xml')
 #### Saving Date today in 2 different formats
 datetoday = date.today().strftime("%Y_%m_%d")
 datetoday2 = date.today().strftime("%d-%B-%Y")
-
-#### If these directories don't exist, create them
-if not os.path.isdir('Attendance'):
-    os.makedirs('Attendance')
-if not os.path.isdir('static'):
-    os.makedirs('static')
-if not os.path.isdir('static/faces'):
-    os.makedirs('static/faces')
-if f'Attendance-{datetoday}.csv' not in os.listdir('Attendance'):
-    with open(f'Attendance/Attendance-{datetoday}.csv','w') as f:
-        f.write('Name,Roll,Time')
+lat=0
+long=0
 
 #### Get lat and long & find distance between main and given point
 def calculate_distance(lat1, lon1):
@@ -128,6 +119,21 @@ def train_model():
 def index():
     return render_template('home.html',totalreg=totalreg(),datetoday2=datetoday2)  
 
+@app.route('/loc')
+def student():
+    return render_template('locate.html',user=0)
+
+@app.route('/find',methods=['GET','POST'])
+def findStudent():
+    _student=str(request.form['roll'])
+    cursor.execute(f"SELECT latitude,longitude FROM attendance WHERE rollno='{_student}'")
+    tracked=cursor.fetchall()
+    if(len(tracked)==0):
+        return render_template('locate.html', user="no user",lat=0, long=0)
+    tracked=tracked[0]
+    print(tracked)
+    return render_template('locate.html',user=_student,lat=tracked[0],long=tracked[1])
+
 
 #### This function will run when we add a new user
 @app.route('/add',methods=['GET','POST'])
@@ -177,6 +183,10 @@ def find_name_from_image_request():
         atndnce=atndnce[0]+1
         query="UPDATE attendance SET {}={} WHERE rollno='{}';".format(datetoday,atndnce,ans[1])
         cursor.execute(query)
+        query="UPDATE attendance SET latitude={} WHERE rollno='{}';".format(lat,ans[1])
+        cursor.execute(query)
+        query="UPDATE attendance SET longitude={} WHERE rollno='{}';".format(long,ans[1])
+        cursor.execute(query)
         cnx.commit()
     if(rollNumber==ans[1]):
         data = {
@@ -194,9 +204,10 @@ def find_name_from_image_request():
 #### API: This function will get lat and long from frontend and return distance from geopoint
 @app.route('/locate',methods = ['GET','POST'])
 def locate():
+    global long,lat
     lat=float(decode_data(request.form['lat']))
-    lng=float(decode_data(request.form['lng']))
-    distance = calculate_distance(lat, lng)
+    long=float(decode_data(request.form['lng']))
+    distance = calculate_distance(lat, long)
     cursor.execute("SHOW COLUMNS FROM attendance LIKE '{}';".format(datetoday))
     ans=cursor.fetchall()
     if not ans: 
