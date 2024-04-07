@@ -35,3 +35,8 @@
 **Geofencing Implementation:**
       Geofencing enables the app to restrict face recognition to specific geographic areas. This enhances security by ensuring that face authentication can only be performed within designated zones. The app leverages Google Maps API for geofencing functionalities.
 
+
+![Screenshot from 2024-04-07 20-55-31](https://github.com/rahulavion/GeoAt/assets/87518013/c58b5025-76ea-4a25-af2f-13dd9c8e50c0)
+![Screenshot from 2024-04-07 20-48-49](https://github.com/rahulavion/GeoAt/assets/87518013/da5432e1-d5be-48c7-b146-48a441ef0ded)
+![Screenshot from 2024-04-07 20-46-54](https://github.com/rahulavion/GeoAt/assets/87518013/6e0ad874-dfc3-45ac-917c-cbbe7c4a9526)
+![Screenshot from 2024-04-07 20-45-46](https://github.com/rahulavion/GeoAt/assets/87518013/54e5989e-6c1c-4525-a1c3-28faac9fbc46)
